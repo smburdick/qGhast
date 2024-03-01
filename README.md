@@ -1,3 +1,8 @@
+# qGhast
+
+A maze runner game for teaching quantum error correction.
+
+
 # Folder structure
 
 - `src` - source code for your kaboom project

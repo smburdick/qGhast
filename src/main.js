@@ -1,242 +1,307 @@
-import kaboom from "kaboom"
+import kaboom from "kaboom";
 
-kaboom()
+kaboom();
 
-loadSprite("pc", "sprites/pc.png")
-// FIXME: These are the wrong sprite names.
-loadSprite("z", "sprites/x-error.png")
-loadSprite("x", "sprites/z-error.png")
+// Characters
+loadSprite("pc", "sprites/pc.png");
+loadSprite("xError", "sprites/x-error.png");
+loadSprite("zError", "sprites/z-error.png");
 
-setBackground(141, 183, 255)
+// Static objects
+loadSprite("z-stabilizer", "sprites/z-stabilizer.png");
+loadSprite("x-stabilizer", "sprites/x-stabilizer.png");
+loadSprite("block", "sprites/block.png");
 
-const SPEED = 320
-const ENEMY_SPEED = 160
-const BULLET_SPEED = 800
-const TOPOLOGICAL_ERROR_RATE = 0.1;
+setBackground(141, 183, 255);
+
+const { abs, random, round } = Math;
+
+const SPEED = 320;
+const ENEMY_SPEED = 160;
+const BULLET_SPEED = 800;
+const ERROR_RATE = 0.1;
+const STABILIZER_INSERTION_RATE = 0.1;
+const WAIT_TIME = 2;
+const BLOCK_DIMENSION = 32;
 
 // Add player game object
 const player = add([
-	sprite("pc"),
-	scale(0.5),
-	pos(80, 80),
-	area(),
-	anchor("center"),
-])
+  sprite("pc"),
+  scale(0.5),
+  pos(80, 80),
+  area(),
+  // anchor("center"),
+]);
 
-player.xDamage = 0
+player.xDamage = 0;
+player.zDamage = 0;
+
+let ticks = 0;
 
 loop(1, () => {
-	// If xDamage or ZDamage is greater than 10, the game is over
-	if (!player.exists() || player.xDamage > 10 || player.zDamage > 10) {
-		console.log("Game over")
-		go("gameover", { score: 20 - player.xDamage + player.zDamage })
-	}
-	const poll = Math.round(rand(1 / TOPOLOGICAL_ERROR_RATE));
-	if (poll === 2) {
-		const xError = add([
-			sprite("x"),
-			scale(0.5),
-			pos(rand(0, width()), rand(0, height())),
-			area(),
-			anchor("center"),
-			state("move", [ "idle", "attack", "move" ]),
-		])
-		// Run the callback once every time we enter "idle" state.
-		// Here we stay "idle" for 0.5 second, then enter "attack" state.
-		xError.onStateEnter("idle", async () => {
-			await wait(0.5)
-			xError.enterState("attack")
-		})
-		// When we enter "attack" state, we fire a bullet, and enter "move" state after 1 sec
-		xError.onStateEnter("attack", async () => {
-			// Don't do anything if player doesn't exist anymore
-			if (player.exists()) {
-				const dir = player.pos.sub(xError.pos).unit()
-				const bullet = add([
-					pos(xError.pos),
-					move(dir, BULLET_SPEED),
-					rect(12, 12),
-					area(),
-					offscreen({ destroy: true }),
-					anchor("center"),
-					color(BLUE),
-				])
-				bullet.onCollide("pc", () => {
-					destroy(bullet)
-					player.xDamage += 1
-				})
-			}
-			await wait(1)
-			xError.enterState("move")
-		})
-		xError.onStateEnter("move", async () => {
-			await wait(2)
-			xError.enterState("idle")
-		})
-		// Like .onUpdate() which runs every frame, but only runs when the current state is "move"
-		// Here we move towards the player every frame if the current state is "move"
-		xError.onStateUpdate("move", () => {
-			if (!player.exists()) return
-			const dir = player.pos.sub(xError.pos).unit()
-			xError.move(dir.scale(ENEMY_SPEED))
-		})
-		xError.onCollide("pc", () => {
-			console.log("[X] Collided with player")
-			player.xDamage += 1
-		})
-	} else if (poll === 1) {
-		const zError = add([
-			sprite("z"),
-			scale(0.5),
-			pos(rand(0, width()), rand(0, height())),
-			area(),
-			anchor("center"),
-			state("move", [ "idle", "attack", "move", "lunge" ]),
-		]);
-		zError.onStateEnter("move", async () => {
-			await wait(2)
-			zError.enterState("idle")
-		})
-		zError.onStateUpdate("move", () => {
-			if (!player.exists()) return
-			const dir = player.pos.sub(zError.pos).unit()
-			zError.move(dir.scale(ENEMY_SPEED))
-		})
-		zError.onStateEnter("idle", async () => {
-			await wait(0.5)
-			zError.enterState("attack")
-		})
-		zError.onStateEnter("lunge", async () => {
-			zError.lungePoints++;
-			if (zError.lungePoints > 10) {
-				zError.enterState("move")
-			} else {
-				const dir = player.pos.sub(zError.pos).unit()
-				zError.move(dir.scale(ENEMY_SPEED * 20))
-				await wait(0.01)	
-				zError.enterState("lunge")
-			}
-		})
-		zError.onStateEnter("attack", async () => {
-			// Lunge at the player, if they are close enough
-			await wait(1)
-			zError.lungePoints = 0;
-			zError.enterState("lunge")
-		})
-		zError.onCollide("pc", () => {
-			player.zDamage += 1
-		})
-}});
+  if (!player.exists() || player.xDamage >= 3 || player.zDamage >= 3) {
+    console.log("Game over");
+    go("gameover", { score: 20 - player.xDamage + player.zDamage });
+  }
+  const poll = ticks++ > WAIT_TIME ? round(random() * (1 / ERROR_RATE)) : 0;
+  if (poll === 2) {
+    const zError = add([
+      sprite("zError"),
+      scale(0.5),
+      pos(rand(0, width()), rand(0, height())),
+      area(),
+      // anchor("center"),
+      state("move", ["idle", "attack", "move"]),
+      "zError",
+    ]);
+    // Run the callback once every time we enter "idle" state.
+    // Here we stay "idle" for 0.5 second, then enter "attack" state.
+    zError.onStateEnter("idle", async () => {
+      await wait(0.5);
+      zError.enterState("attack");
+    });
+    // When we enter "attack" state, we fire a bullet,
+    // and enter "move" state after 1 sec
+    zError.onStateEnter("attack", async () => {
+      // Don't do anything if player doesn't exist anymore
+      if (player.exists()) {
+        const dir = player.pos.sub(zError.pos).unit();
+        add([
+          pos(zError.pos),
+          move(dir, BULLET_SPEED),
+          rect(12, 12),
+          area(),
+          offscreen({ destroy: true }),
+          // anchor("center"),
+          color(RED),
+          "bullet",
+        ]);
+      }
+      await wait(1);
+      zError.enterState("move");
+    });
+    zError.onStateEnter("move", async () => {
+      await wait(2);
+      zError.enterState("idle");
+    });
+    zError.onStateUpdate("move", () => {
+      if (!player.exists()) return;
+      const dir = player.pos.sub(zError.pos).unit();
+      zError.move(dir.scale(ENEMY_SPEED));
+    });
+  } else if (poll === 1) {
+    const xError = add([
+      sprite("xError"),
+      scale(0.5),
+      pos(rand(0, width()), rand(0, height())),
+      area(),
+      // anchor("center"),
+      state("move", ["idle", "attack", "move", "lunge"]),
+      "zError",
+    ]);
+    xError.onStateEnter("move", async () => {
+      await wait(2);
+      xError.enterState("idle");
+    });
+    xError.onStateUpdate("move", () => {
+      if (!player.exists()) return;
+      const dir = player.pos.sub(xError.pos).unit();
+      xError.move(dir.scale(ENEMY_SPEED));
+    });
+    xError.onStateEnter("idle", async () => {
+      await wait(0.5);
+      xError.enterState("attack");
+    });
+    xError.onStateEnter("lunge", async () => {
+      xError.lungePoints++;
+      if (xError.lungePoints > 10) {
+        xError.enterState("move");
+      } else {
+        const dir = player.pos.sub(xError.pos).unit();
+        xError.move(dir.scale(ENEMY_SPEED * 20));
+        await wait(0.01);
+        xError.enterState("lunge");
+      }
+    });
+    xError.onStateEnter("attack", async () => {
+      await wait(1);
+      xError.lungePoints = 0;
+      xError.enterState("lunge");
+    });
+  }
+});
 
+player.onCollide("xError", () => {
+  player.xDamage += 1;
+});
+
+player.onCollide("zError", () => {
+  player.zDamage += 1;
+});
+
+player.onCollide("bullet", (bullet) => {
+  player.xDamage += 1;
+  destroy(bullet);
+});
+
+player.onCollide("x-stabilizer", (stabilizer) => {
+  player.zDamage -= 1;
+  destroy(stabilizer);
+});
+
+player.onCollide("z-stabilizer", (stabilizer) => {
+  player.xDamage -= 1;
+  destroy(stabilizer);
+});
 
 // Register input handlers & movement
 onKeyDown("left", () => {
-	player.move(-SPEED, 0)
-})
+  player.move(-SPEED, 0);
+});
 
 onKeyDown("right", () => {
-	// player.flipX(true)
-	player.move(SPEED, 0)
-})
+  // player.flipX(true)
+  player.move(SPEED, 0);
+});
 
 onKeyDown("up", () => {
-	player.move(0, -SPEED)
-})
+  player.move(0, -SPEED);
+});
 
 onKeyDown("down", () => {
-	player.move(0, SPEED)
-})
+  player.move(0, SPEED);
+});
 
 // MAZE FUNCTIONS
 
-function cells(grid) {
-	var { width, height } = grid
-	var cells = new Array(width * height)
-	for (var y = 0; y < height; y++) {
-		for (var x = 0; x < width; x++) {
-			var cell = { x, y }
-			cells[locate(grid, cell)] = cell
-		}
-	}
-	return cells
+function cellsASCII(grid) {
+  var { width, height } = grid;
+  var cells = new Array(width * height);
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      var cell = { x, y };
+      cells[locate(grid, cell)] = cell;
+    }
+  }
+  return cells;
 }
 
 function locate(grid, cell) {
-	return cell.y * grid.width + cell.x
+  return cell.y * grid.width + cell.x;
 }
 
-const abs = Math.abs
-
 function adjacent(a, b) {
-	return abs(b.x - a.x) + abs(b.y - a.y) === 2
+  return abs(b.x - a.x) + abs(b.y - a.y) === 2;
 }
 
 function choose(array) {
-	return array[Math.floor(Math.random() * array.length)]
+  return array[Math.floor(Math.random() * array.length)];
 }
 
 function connect(maze, world) {
-	for (var [node, neighbors] of maze) {
-		world.tiles[locate(world, node)] = 'floor'
-		for (var neighbor of neighbors) {
-			var midpoint = {
-				x: node.x + (neighbor.x - node.x) / 2,
-				y: node.y + (neighbor.y - node.y) / 2
-			}
-			world.tiles[locate(world, midpoint)] = 'floor'
-		}
-	}
+  for (var [node, neighbors] of maze) {
+    world.tiles[locate(world, node)] = "floor";
+    for (var neighbor of neighbors) {
+      var midpoint = {
+        x: node.x + (neighbor.x - node.x) / 2,
+        y: node.y + (neighbor.y - node.y) / 2,
+      };
+      world.tiles[locate(world, midpoint)] = "floor";
+    }
+  }
 }
 
-function renderMazeASCII(world) {
-	var view = ''
-	for (var cell of cells(world)) {
-		var tile = world.tiles[locate(world, cell)]
-		var sprite = sprites[tile]
-		if (!cell.x && cell.y) {
-			view += '\n' + sprite
-		} else {
-			view += sprite
-		}
-	}
-	return view
+function worldView(world) {
+  var view = "";
+  for (var cell of cellsASCII(world)) {
+    var tile = world.tiles[locate(world, cell)];
+    var sprite = spritesASCII[tile];
+    if (!cell.x && cell.y) {
+      view += "\n" + sprite;
+    } else {
+      view += sprite;
+    }
+  }
+  return view;
 }
 
-const sprites = {
-	floor: '  ',
-	wall: String.fromCharCode(0x2588).repeat(2)
+const floorChar = " ";
+const wallChar = "#";
+
+const spritesASCII = {
+  floor: floorChar,
+  wall: wallChar,
+};
+
+const MAZE_WIDTH = 15;
+const MAZE_HEIGHT = MAZE_WIDTH;
+
+function generateMaze() {
+  const generate = require("maze");
+  var world = {
+    width: MAZE_WIDTH,
+    height: MAZE_HEIGHT,
+    tiles: new Array(MAZE_HEIGHT * MAZE_WIDTH).fill("wall"),
+  };
+
+  var nodes = cellsASCII(world).filter((cell) => cell.x % 2 && cell.y % 2);
+  var maze = generate(nodes, adjacent, choose);
+  connect(maze, world);
+
+  maze = worldView(world);
+
+  replaceAt = function (str, index, replacement) {
+    return (
+      str.substring(0, index) +
+      replacement +
+      str.substring(index + replacement.length)
+    );
+  };
+
+  for (let i = 0; i < maze.length; i++) {
+    if (maze[i] === floorChar) {
+      const randomNumber = round(random() * 20);
+      if (randomNumber === 2) {
+        maze = replaceAt(maze, i, xSpot);
+      } else if (randomNumber === 1) {
+        maze = replaceAt(maze, i, zSpot);
+      }
+    }
+  }
+  return maze; // string representation of the maze
 }
 
-function generateMaze () {
-	const generate = require('maze');
-	var world = {
-		width: 15,
-		height: 15,
-		tiles: new Array(15 * 15).fill('wall')
-	}
+const xSpot = "X";
+const zSpot = "Z";
+var maze = generateMaze();
 
-	var nodes = cells(world).filter(cell => cell.x % 2 && cell.y % 2)
-	var maze = generate(nodes, adjacent, choose)
-	connect(maze, world)
+console.log(maze);
 
-	var view = renderMazeASCII(world)
-	console.log(view)
+const mazeTileSettings = {
+  wallChar: () => [
+    sprite("block"),
+    solid(),
+    area(),
+    rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    "block",
+  ],
+  xSpot: () => [
+    sprite("x-stabilizer"),
+    area(),
+    rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    "x-stabilizer",
+  ],
+  zSpot: () => [
+    sprite("z-stabilizer"),
+    area(),
+    rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    "z-stabilizer",
+  ],
+};
 
-	return world
-}
-
-const maze = generateMaze();
-
-// Add maze elements to the game
-for (var cell of cells(maze)) {
-	var tile = maze.tiles[locate(maze, cell)]
-	if (tile === 'wall') {
-		add([
-			rect(32, 32),
-			pos(cell.x * 32, cell.y * 32),
-			color(0, 0, 0),
-			area(),
-			center()
-		])
-	}
-}
+// FIXME: This is not working
+// addLevel([maze], {
+//   tileWidth: BLOCK_DIMENSION,
+//   tileHeight: BLOCK_DIMENSION,
+//   tiles: mazeTileSettings,
+// });
