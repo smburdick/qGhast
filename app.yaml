@@ -1,7 +1,7 @@
 runtime: nodejs20
 handlers:
 # Catch all handler to index.html
-- url: /.*
+- url: /play
   static_files: www/*
   upload: www/*
 
