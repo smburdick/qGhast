@@ -6,7 +6,8 @@
 		"bundle": "npm run build && mkdir -p dist && zip -r dist/game.zip www -x \"**/.DS_Store\""
 	},
 	"dependencies": {
-		"kaboom": "^3000.1.17"
+		"kaboom": "^3000.1.17",
+		"node-maze-generator": "^1.4.4"
 	},
 	"devDependencies": {
 		"esbuild": "^0.20.1"
