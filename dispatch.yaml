@@ -1,0 +1,5 @@
+dispatch:
+  - url: "qghast.com/*"
+    service: default
+  - url: "www.qghast.com/*"
+    service: default

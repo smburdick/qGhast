@@ -1,0 +1,8 @@
+runtime: nodejs20
+handlers:
+# Catch all handler to index.html
+- url: /.*
+  static_files: www/*
+  upload: www/*
+
+service: default
