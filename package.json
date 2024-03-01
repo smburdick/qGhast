@@ -7,7 +7,7 @@
 	},
 	"dependencies": {
 		"kaboom": "^3000.1.17",
-		"node-maze-generator": "^1.4.4"
+		"maze": "^0.1.0"
 	},
 	"devDependencies": {
 		"esbuild": "^0.20.1"
