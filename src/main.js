@@ -11,6 +11,7 @@ loadSprite("zError", "sprites/z-error.png");
 loadSprite("z-stabilizer", "sprites/z-stabilizer.png");
 loadSprite("x-stabilizer", "sprites/x-stabilizer.png");
 loadSprite("block", "sprites/block.png");
+loadSprite("measure", "sprites/measure.png");
 
 setBackground(141, 183, 255);
 
@@ -20,17 +21,16 @@ const SPEED = 320;
 const ENEMY_SPEED = 160;
 const BULLET_SPEED = 800;
 const ERROR_RATE = 0.1;
-const STABILIZER_INSERTION_RATE = 0.1;
+const STABILIZER_INSERTION_RATE = 0.05;
 const WAIT_TIME = 2;
-const BLOCK_DIMENSION = 32;
+const BLOCK_DIMENSION = 32 * 1.75;
+const SPRITE_SCALE = 0.25;
 
-// Add player game object
 const player = add([
   sprite("pc"),
-  scale(0.5),
-  pos(80, 80),
+  scale(SPRITE_SCALE),
+  pos(width()  / 4 + BLOCK_DIMENSION - 8, BLOCK_DIMENSION - 8),
   area(),
-  // anchor("center"),
 ]);
 
 player.xDamage = 0;
@@ -40,14 +40,13 @@ let ticks = 0;
 
 loop(1, () => {
   if (!player.exists() || player.xDamage >= 3 || player.zDamage >= 3) {
-    console.log("Game over");
     go("gameover", { score: 20 - player.xDamage + player.zDamage });
   }
   const poll = ticks++ > WAIT_TIME ? round(random() * (1 / ERROR_RATE)) : 0;
   if (poll === 2) {
     const zError = add([
       sprite("zError"),
-      scale(0.5),
+      scale(SPRITE_SCALE),
       pos(rand(0, width()), rand(0, height())),
       area(),
       // anchor("center"),
@@ -92,7 +91,7 @@ loop(1, () => {
   } else if (poll === 1) {
     const xError = add([
       sprite("xError"),
-      scale(0.5),
+      scale(SPRITE_SCALE),
       pos(rand(0, width()), rand(0, height())),
       area(),
       // anchor("center"),
@@ -152,6 +151,14 @@ player.onCollide("x-stabilizer", (stabilizer) => {
 player.onCollide("z-stabilizer", (stabilizer) => {
   player.xDamage -= 1;
   destroy(stabilizer);
+});
+
+player.onCollide("block", () => {
+  // player.move(-SPEED, 0);
+});
+
+player.onCollide("measure", (measure) => {
+  go("You win!");
 });
 
 // Register input handlers & movement
@@ -236,7 +243,7 @@ const spritesASCII = {
 const MAZE_WIDTH = 15;
 const MAZE_HEIGHT = MAZE_WIDTH;
 
-function generateMaze() {
+generateMaze = () => {
   const generate = require("maze");
   var world = {
     width: MAZE_WIDTH,
@@ -260,7 +267,7 @@ function generateMaze() {
 
   for (let i = 0; i < maze.length; i++) {
     if (maze[i] === floorChar) {
-      const randomNumber = round(random() * 20);
+      const randomNumber = round(random() * (1 / STABILIZER_INSERTION_RATE));
       if (randomNumber === 2) {
         maze = replaceAt(maze, i, xSpot);
       } else if (randomNumber === 1) {
@@ -273,35 +280,47 @@ function generateMaze() {
 
 const xSpot = "X";
 const zSpot = "Z";
-var maze = generateMaze();
+const mSpot  = "M";
 
-console.log(maze);
+var maze = generateMaze().split("\n");
+maze[MAZE_HEIGHT - 2] = replaceAt(maze[MAZE_HEIGHT - 2], MAZE_WIDTH - 2, mSpot);
+
+maze.forEach((row) => {
+  console.log(row);
+})
 
 const mazeTileSettings = {
-  wallChar: () => [
-    sprite("block"),
-    solid(),
-    area(),
+  "#": () => [
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    color(BLACK),
+    // solid(),
+    area(),
     "block",
   ],
-  xSpot: () => [
-    sprite("x-stabilizer"),
-    area(),
+  "M": () => [
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    //sprite("measure"),
+    color(BLUE),
+    area(),
+    "measure",
+  ],
+  "X": () => [
+    rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    color(YELLOW),
+    area(),
     "x-stabilizer",
   ],
-  zSpot: () => [
-    sprite("z-stabilizer"),
-    area(),
+  "Z": () => [
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
+    color(MAGENTA),
+    area(),
     "z-stabilizer",
   ],
 };
 
-// FIXME: This is not working
-// addLevel([maze], {
-//   tileWidth: BLOCK_DIMENSION,
-//   tileHeight: BLOCK_DIMENSION,
-//   tiles: mazeTileSettings,
-// });
+addLevel(maze, {
+  tileWidth: BLOCK_DIMENSION,
+  tileHeight: BLOCK_DIMENSION,
+  pos: vec2(width()  / 4, 0),
+  tiles: mazeTileSettings,
+});
