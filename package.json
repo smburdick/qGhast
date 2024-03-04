@@ -1,9 +1,10 @@
 {
 	"name": "qGhast",
 	"scripts": {
-		"build": "esbuild --bundle src/main.js --outfile=www/main.js --minify",
+		"build": "esbuild --bundle www/main.js --outfile=www/main.js --minify --allow-overwrite --servedir=www",
 		"dev": "esbuild --bundle src/main.js --outfile=www/main.js --servedir=www",
-		"bundle": "npm run build && mkdir -p dist && zip -r dist/game.zip www -x \"**/.DS_Store\""
+		"bundle": "npm run build && mkdir -p dist && zip -r dist/game.zip www -x \"**/.DS_Store\"",
+		"start": "npm run build"
 	},
 	"dependencies": {
 		"kaboom": "^3000.1.17",

@@ -25,12 +25,15 @@ const STABILIZER_INSERTION_RATE = 0.05;
 const WAIT_TIME = 2;
 const BLOCK_DIMENSION = 32 * 1.75;
 const SPRITE_SCALE = 0.25;
+const PC_SCALE = 0.15;
+const DMG_THRESHOLD = 5;
 
 const player = add([
   sprite("pc"),
-  scale(SPRITE_SCALE),
-  pos(width()  / 4 + BLOCK_DIMENSION - 8, BLOCK_DIMENSION - 8),
+  scale(PC_SCALE),
+  pos(width()  / 4 + BLOCK_DIMENSION +4, BLOCK_DIMENSION + 8), // place the player in top-right of the maze
   area(),
+	body(), // collide with blocks
 ]);
 
 player.xDamage = 0;
@@ -39,9 +42,13 @@ player.zDamage = 0;
 let ticks = 0;
 
 loop(1, () => {
-  if (!player.exists() || player.xDamage >= 3 || player.zDamage >= 3) {
+  if (!player.exists() || player.xDamage >= DMG_THRESHOLD || player.zDamage >= DMG_THRESHOLD) {
     go("gameover", { score: 20 - player.xDamage + player.zDamage });
   }
+  // update opacity and color of the player based on damage
+  player.color = rgb(255, 255 - player.zDamage * 50, 255 - player.zDamage * 50);
+  player.opacity = 1 - (player.xDamage + player.xDamage) * 0.1;
+  // Decide whether to spawn an error
   const poll = ticks++ > WAIT_TIME ? round(random() * (1 / ERROR_RATE)) : 0;
   if (poll === 2) {
     const zError = add([
@@ -151,10 +158,6 @@ player.onCollide("x-stabilizer", (stabilizer) => {
 player.onCollide("z-stabilizer", (stabilizer) => {
   player.xDamage -= 1;
   destroy(stabilizer);
-});
-
-player.onCollide("block", () => {
-  // player.move(-SPEED, 0);
 });
 
 player.onCollide("measure", (measure) => {
@@ -294,6 +297,7 @@ const mazeTileSettings = {
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
     color(BLACK),
     // solid(),
+    body({ isStatic: true }),
     area(),
     "block",
   ],
