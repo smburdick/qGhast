@@ -1,8 +1,16 @@
 runtime: nodejs20
+env: standard
+
 handlers:
+# Serve all static files with url ending with a file extension
+- url: /(.*\..+)$
+  static_files: www/\1
+  upload: www/(.*\..+)$
+  static_dir: www/
 # Catch all handler to index.html
 - url: /.*
-  static_files: www/*
-  upload: www/*
+  static_dir: www/
+  static_files: www/index.html
+  upload: www/index.html
 
 service: default
