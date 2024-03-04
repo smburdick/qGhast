@@ -6,10 +6,8 @@ handlers:
 - url: /(.*\..+)$
   static_files: www/\1
   upload: www/(.*\..+)$
-  static_dir: www/
 # Catch all handler to index.html
 - url: /.*
-  static_dir: www/
   static_files: www/index.html
   upload: www/index.html
 

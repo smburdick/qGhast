@@ -28,135 +28,129 @@ const ENEMY_SCALE = 0.25;
 const PC_SCALE = 0.15;
 const DMG_THRESHOLD = 5;
 
-let player = undefined;
+let ticks = 0;
 
 player = add([
   sprite("pc"),
   scale(PC_SCALE),
-  pos(width()  / 4 + BLOCK_DIMENSION +4, BLOCK_DIMENSION + 8), // place the player in top-right of the maze
+  pos(width() / 4 + BLOCK_DIMENSION + 4, BLOCK_DIMENSION + 8), // place the player in top-right of the maze
   area(),
-	body(), // collide with blocks
+  body(), // collide with blocks
 ]);
 
 scene("gameover", (props) => {
-  add([
-    text(props.txt, 32),
-    pos(width() / 2, height() / 2),
-  ]);
-  add([
-    text(`Score: ${props.score}`, 32),
-    pos(width() / 2, height() / 2 + 32),
-  ]);
+  add([text(props.txt, 32), pos(width() / 2, height() / 2)]);
+  add([text(`Score: ${props.score}`, 32), pos(width() / 2, height() / 2 + 32)]);
 });
 
 player.xDamage = 0;
 player.zDamage = 0;
 
-let ticks = 0;
-
 let DEBUG = false;
 
-scene("main", () => {
-  loop(1, () => {
-    console.log("Player exists?", player.exists());
-    if (!player.exists() || player.xDamage >= DMG_THRESHOLD || player.zDamage >= DMG_THRESHOLD || DEBUG) {
-      const props = {
-        txt: "Game Over!",
-        score: 20 - player.xDamage + player.zDamage,
-      }
-      go("gameover", props);
-    }
-    // update opacity and color of the player based on damage
-    player.color = rgb(255, 255 - player.zDamage * 50, 255 - player.zDamage * 50);
-    player.opacity = 1 - (player.xDamage + player.xDamage) * 0.1;
-    // Decide whether to spawn an error
-    const poll = ticks++ > WAIT_TIME ? round(random() * (1 / ERROR_RATE)) : 0;
-    if (poll === 2) {
-      const zError = add([
-        sprite("zError"),
-        scale(ENEMY_SCALE),
-        pos(rand(0, width()), rand(0, height())),
-        area(),
-        // anchor("center"),
-        state("move", ["idle", "attack", "move"]),
-        "zError",
-      ]);
-      // Run the callback once every time we enter "idle" state.
-      // Here we stay "idle" for 0.5 second, then enter "attack" state.
-      zError.onStateEnter("idle", async () => {
-        await wait(0.5);
-        zError.enterState("attack");
-      });
-      // When we enter "attack" state, we fire a bullet,
-      // and enter "move" state after 1 sec
-      zError.onStateEnter("attack", async () => {
-        // Don't do anything if player doesn't exist anymore
-        if (player.exists()) {
-          const dir = player.pos.sub(zError.pos).unit();
-          add([
-            pos(zError.pos),
-            move(dir, BULLET_SPEED),
-            rect(12, 12),
-            area(),
-            offscreen({ destroy: true }),
-            // anchor("center"),
-            color(RED),
-            "bullet",
-          ]);
-        }
-        await wait(1);
-        zError.enterState("move");
-      });
-      zError.onStateEnter("move", async () => {
-        await wait(2);
-        zError.enterState("idle");
-      });
-      zError.onStateUpdate("move", () => {
-        if (!player.exists()) return;
+loop(1, () => {
+  if (
+    !player.exists() ||
+    player.xDamage >= DMG_THRESHOLD ||
+    player.zDamage >= DMG_THRESHOLD ||
+    DEBUG
+  ) {
+    const props = {
+      txt: "Game Over!",
+      score: 20 - player.xDamage + player.zDamage,
+    };
+    go("gameover", props);
+  }
+  // update opacity and color of the player based on damage
+  player.color = rgb(255, 255 - player.zDamage * 50, 255 - player.zDamage * 50);
+  player.opacity = 1 - (player.xDamage + player.xDamage) * 0.1;
+  // Decide whether to spawn an error
+  const poll = ticks++ > WAIT_TIME ? round(random() * (1 / ERROR_RATE)) : 0;
+  if (poll === 2) {
+    const zError = add([
+      sprite("zError"),
+      scale(ENEMY_SCALE),
+      pos(rand(0, width()), rand(0, height())),
+      area(),
+      // anchor("center"),
+      state("move", ["idle", "attack", "move"]),
+      "zError",
+    ]);
+    // Run the callback once every time we enter "idle" state.
+    // Here we stay "idle" for 0.5 second, then enter "attack" state.
+    zError.onStateEnter("idle", async () => {
+      await wait(0.5);
+      zError.enterState("attack");
+    });
+    // When we enter "attack" state, we fire a bullet,
+    // and enter "move" state after 1 sec
+    zError.onStateEnter("attack", async () => {
+      // Don't do anything if player doesn't exist anymore
+      if (player.exists()) {
         const dir = player.pos.sub(zError.pos).unit();
-        zError.move(dir.scale(ENEMY_SPEED));
-      });
-    } else if (poll === 1) {
-      const xError = add([
-        sprite("xError"),
-        scale(ENEMY_SCALE),
-        pos(rand(0, width()), rand(0, height())),
-        area(),
-        // anchor("center"),
-        state("move", ["idle", "attack", "move", "lunge"]),
-        "zError",
-      ]);
-      xError.onStateEnter("move", async () => {
-        await wait(2);
-        xError.enterState("idle");
-      });
-      xError.onStateUpdate("move", () => {
-        if (!player.exists()) return;
+        add([
+          pos(zError.pos),
+          move(dir, BULLET_SPEED),
+          rect(12, 12),
+          area(),
+          offscreen({ destroy: true }),
+          // anchor("center"),
+          color(RED),
+          "bullet",
+        ]);
+      }
+      await wait(1);
+      zError.enterState("move");
+    });
+    zError.onStateEnter("move", async () => {
+      await wait(2);
+      zError.enterState("idle");
+    });
+    zError.onStateUpdate("move", () => {
+      if (!player.exists()) return;
+      const dir = player.pos.sub(zError.pos).unit();
+      zError.move(dir.scale(ENEMY_SPEED));
+    });
+  } else if (poll === 1) {
+    const xError = add([
+      sprite("xError"),
+      scale(ENEMY_SCALE),
+      pos(rand(0, width()), rand(0, height())),
+      area(),
+      // anchor("center"),
+      state("move", ["idle", "attack", "move", "lunge"]),
+      "zError",
+    ]);
+    xError.onStateEnter("move", async () => {
+      await wait(2);
+      xError.enterState("idle");
+    });
+    xError.onStateUpdate("move", () => {
+      if (!player.exists()) return;
+      const dir = player.pos.sub(xError.pos).unit();
+      xError.move(dir.scale(ENEMY_SPEED));
+    });
+    xError.onStateEnter("idle", async () => {
+      await wait(0.5);
+      xError.enterState("attack");
+    });
+    xError.onStateEnter("lunge", async () => {
+      xError.lungePoints++;
+      if (xError.lungePoints > 10) {
+        xError.enterState("move");
+      } else {
         const dir = player.pos.sub(xError.pos).unit();
-        xError.move(dir.scale(ENEMY_SPEED));
-      });
-      xError.onStateEnter("idle", async () => {
-        await wait(0.5);
-        xError.enterState("attack");
-      });
-      xError.onStateEnter("lunge", async () => {
-        xError.lungePoints++;
-        if (xError.lungePoints > 10) {
-          xError.enterState("move");
-        } else {
-          const dir = player.pos.sub(xError.pos).unit();
-          xError.move(dir.scale(ENEMY_SPEED * 20));
-          await wait(0.01);
-          xError.enterState("lunge");
-        }
-      });
-      xError.onStateEnter("attack", async () => {
-        await wait(1);
-        xError.lungePoints = 0;
+        xError.move(dir.scale(ENEMY_SPEED * 20));
+        await wait(0.01);
         xError.enterState("lunge");
-      });
-    }
-  });
+      }
+    });
+    xError.onStateEnter("attack", async () => {
+      await wait(1);
+      xError.lungePoints = 0;
+      xError.enterState("lunge");
+    });
+  }
 });
 
 player.onCollide("xError", () => {
@@ -186,7 +180,7 @@ player.onCollide("measure", () => {
   const props = {
     txt: "You win!",
     score: 20 - player.xDamage + player.zDamage,
-  }
+  };
   go("gameover", props);
 });
 
@@ -305,18 +299,18 @@ generateMaze = () => {
     }
   }
   return maze; // string representation of the maze
-}
+};
 
 const xSpot = "X";
 const zSpot = "Z";
-const mSpot  = "M";
+const mSpot = "M";
 
 var maze = generateMaze().split("\n");
 maze[MAZE_HEIGHT - 2] = replaceAt(maze[MAZE_HEIGHT - 2], MAZE_WIDTH - 2, mSpot);
 
 maze.forEach((row) => {
   console.log(row);
-})
+});
 
 const mazeTileSettings = {
   "#": () => [
@@ -327,19 +321,19 @@ const mazeTileSettings = {
     area(),
     "block",
   ],
-  "M": () => [
+  M: () => [
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
     color(BLUE),
     area(),
     "measure",
   ],
-  "X": () => [
+  X: () => [
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
     color(YELLOW),
     area(),
     "x-stabilizer",
   ],
-  "Z": () => [
+  Z: () => [
     rect(BLOCK_DIMENSION, BLOCK_DIMENSION),
     color(MAGENTA),
     area(),
@@ -350,6 +344,6 @@ const mazeTileSettings = {
 addLevel(maze, {
   tileWidth: BLOCK_DIMENSION,
   tileHeight: BLOCK_DIMENSION,
-  pos: vec2(width()  / 4, 0),
+  pos: vec2(width() / 4, 0),
   tiles: mazeTileSettings,
 });
