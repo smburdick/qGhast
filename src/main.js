@@ -39,8 +39,7 @@ player = add([
 ]);
 
 scene("gameover", (props) => {
-  add([text(props.txt, 32), pos(width() / 2, height() / 2)]);
-  add([text(`Score: ${props.score}`, 32), pos(width() / 2, height() / 2 + 32)]);
+  add([text(props.txt, 32), pos(width() / 4, height() / 4)]);
 });
 
 player.xDamage = 0;
